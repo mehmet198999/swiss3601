@@ -1,0 +1,29 @@
+# =====================================================================
+#  gsm-gateway-hci@.service
+#
+#  Bereitet einen Bluetooth-Adapter fuer chan_mobile vor:
+#    * HCI Voice Setting auf 0x0060 setzen
+#      (chan_mobile verweigert jeden Adapter mit einem anderen Wert)
+#    * Adapter einschalten
+#
+#  Wird von der udev-Regel 99-gsm-gateway-bluetooth.rules automatisch
+#  gestartet, sobald ein Adapter erscheint (z.B. USB-BT500 eingesteckt).
+#
+#  Instanzname = HCI-Geraet, z.B. gsm-gateway-hci@hci1.service
+#
+#  Installiert nach: /etc/systemd/system/gsm-gateway-hci@.service
+# =====================================================================
+[Unit]
+Description=Bluetooth-Adapter %i fuer chan_mobile vorbereiten
+After=bluetooth.service
+Wants=bluetooth.service
+After=sys-subsystem-bluetooth-devices-%i.device
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/gsm-gateway/scripts/gateway-hci-prepare.sh %i
+TimeoutStartSec=120
+
+[Install]
+WantedBy=bluetooth.target

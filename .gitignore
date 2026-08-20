@@ -1,0 +1,25 @@
+# Nichts aus diesem Verzeichnis gehoert ins Repository, was auf einem
+# echten Gateway entsteht.
+
+# Zugangsdaten - duerfen NIEMALS eingecheckt werden
+config/gateway.conf
+secrets/
+*.secret
+sip-*.conf
+
+# Erzeugte Konfigurationen (entstehen erst auf dem Pi)
+*.rendered
+/etc/**/*.conf
+!etc/fail2ban/jail.d/gsm-gateway.conf.template
+
+# Protokolle und Zustand
+*.log
+bootstrap.log
+
+# Editor- und Systemdateien
+*~
+*.swp
+*.bak
+.DS_Store
+__pycache__/
+*.pyc

@@ -1,0 +1,146 @@
+# =====================================================================
+#  GSM -> SIP Gateway - zentrale Konfiguration
+#  Installiert nach: /etc/gsm-gateway/gateway.conf
+#
+#  Diese Datei wird von allen Scripts als Shell-Datei eingelesen.
+#  Nur einfache KEY="VALUE" Zeilen verwenden - kein Shell-Code.
+#  Nach Aenderungen: sudo gateway-test.sh  (bzw. betroffenes Setup neu starten)
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Asterisk
+# ---------------------------------------------------------------------
+
+# Bevorzugte Asterisk-Hauptversion fuer den Source-Build.
+# 22 = aktuelles LTS (Support bis 2028/2029).
+GG_ASTERISK_BRANCH="22"
+
+# "current"  = jeweils neuestes Release des oben gewaehlten Branches
+# "22.10.1"  = exakt diese Version festnageln (reproduzierbar)
+GG_ASTERISK_VERSION="current"
+
+# Download-Spiegel fuer die Asterisk-Quellen.
+GG_ASTERISK_MIRROR="https://downloads.asterisk.org/pub/telephony/asterisk"
+
+# GPG-Fingerprint des Asterisk-Release-Signaturschluessels.
+# Wird zur Signaturpruefung des heruntergeladenen Tarballs verwendet.
+GG_ASTERISK_GPG_FPR="F2FC93DB7587BD1FB49E045A5D984BE337191CE7"
+
+# Keyserver fuer den Import des Signaturschluessels.
+GG_ASTERISK_KEYSERVER="hkps://keys.openpgp.org"
+
+# Asterisk auch dann aus dem Quellcode bauen, wenn ein APT-Paket
+# verfuegbar waere. Normalerweise "no".
+GG_ASTERISK_FORCE_SOURCE="no"
+
+# Parallele Build-Jobs. "auto" = anhand von CPU-Kernen UND RAM berechnen
+# (Raspberry Pi 3 mit 1 GB RAM ergibt typischerweise 2).
+GG_BUILD_JOBS="auto"
+
+# Groesse der temporaeren Swap-Datei in MB waehrend des Builds.
+# Der Pi 3 hat nur 1 GB RAM - ohne zusaetzlichen Swap schlaegt der
+# Compiler-Lauf mit "virtual memory exhausted" fehl.
+GG_BUILD_SWAP_MB="2048"
+
+# Mindestens benoetigter freier Plattenplatz fuer den Build (MB).
+GG_BUILD_MIN_DISK_MB="3500"
+
+# ---------------------------------------------------------------------
+# Bluetooth
+# ---------------------------------------------------------------------
+
+# Bevorzugter Bluetooth-Adapter fuer chan_mobile:
+#   "usb"   = ein per USB angeschlossener Adapter (ASUS USB-BT500)
+#   "auto"  = USB bevorzugen, sonst der erste gefundene Adapter
+#   "hci1"  = fester Adaptername
+#   "AA:BB:CC:DD:EE:FF" = feste MAC-Adresse
+GG_BT_ADAPTER="usb"
+
+# Name, unter dem der Raspberry Pi fuer das iPhone sichtbar ist.
+GG_BT_NAME="gsm-gateway"
+
+# Bluetooth Class of Device.
+# 0x200404 = Audio/Video -> Hands-free device.
+# iOS bietet HFP nur Geraeten an, die sich als Freisprecheinrichtung
+# ausgeben. Ohne diesen Wert taucht das Gateway auf dem iPhone als
+# "Sonstiges Geraet" auf und HFP wird oft nicht angeboten.
+GG_BT_CLASS="0x200404"
+
+# Sekunden, die pair-iphone.sh nach Geraeten sucht.
+GG_BT_SCAN_SECONDS="20"
+
+# ---------------------------------------------------------------------
+# chan_mobile / Mobilgeraet
+# ---------------------------------------------------------------------
+
+# Interner Name des Mobilgeraets in chan_mobile.conf und im Dialplan.
+GG_MOBILE_ID="iphone"
+
+# Asterisk-Kontext fuer eingehende GSM-Anrufe.
+GG_MOBILE_CONTEXT="from-mobile"
+
+# ---------------------------------------------------------------------
+# SIP
+# ---------------------------------------------------------------------
+
+# Lokale SIP-Nebenstelle.
+GG_SIP_EXTENSION="1001"
+
+# SIP-Port. Bleibt bewusst auf dem Standardport, wird aber per
+# Firewall auf das LAN begrenzt.
+GG_SIP_PORT="5060"
+
+# RTP-Portbereich (Sprachdaten).
+GG_RTP_START="10000"
+GG_RTP_END="10100"
+
+# Netze, die auf SIP/RTP/Status-Webseite zugreifen duerfen.
+# Leerzeichen-getrennte CIDR-Liste. Standard: private LAN-Netze.
+# Oeffentliche Adressen hier NICHT eintragen - dafuer WireGuard nutzen.
+GG_LAN_NETWORKS="192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 169.254.0.0/16"
+
+# Laenge des generierten SIP-Passworts (Zeichen).
+GG_SIP_PASSWORD_LENGTH="24"
+
+# ---------------------------------------------------------------------
+# Ausgehende Anrufe / Schutz vor Gebuehrenbetrug
+# ---------------------------------------------------------------------
+
+# Praefixe, die NIEMALS ueber das GSM-Modem gewaehlt werden duerfen.
+# 0900/0901/0906 = Schweizer Mehrwertdienste,
+# 0087x/0088x    = Satellitennetze (extrem teuer).
+# setup-sip.sh erzeugt daraus automatisch auch die Varianten in
+# internationaler Schreibweise (+41900..., 0041900...).
+# Achtung: kurze Praefixe wie "1" wuerden halb Europa sperren.
+GG_BLOCKED_PREFIXES="0900 0901 0906 00881 00882 00883 00870 00871 00872 00873"
+
+# Maximale gleichzeitige ausgehende GSM-Anrufe.
+# Das iPhone kann ueber HFP nur ein Gespraech gleichzeitig fuehren.
+GG_MAX_OUTGOING_CALLS="1"
+
+# ---------------------------------------------------------------------
+# Web-Statusseite
+# ---------------------------------------------------------------------
+
+# Statusseite aktivieren (yes/no).
+GG_WEB_ENABLE="yes"
+
+# Port der Statusseite. 80 => http://gsm-gateway.local
+GG_WEB_PORT="80"
+
+# ---------------------------------------------------------------------
+# System
+# ---------------------------------------------------------------------
+
+GG_TIMEZONE="Europe/Zurich"
+GG_LOCALE="de_CH.UTF-8"
+GG_HOSTNAME="gsm-gateway"
+
+# Vollstaendiges Distributions-Upgrade beim ersten Boot durchfuehren.
+# "no" verkuerzt die Erstinstallation deutlich, laesst aber
+# Sicherheitsupdates aus. Standard: yes.
+GG_FULL_UPGRADE="yes"
+
+# Maximale Anzahl an Installationsversuchen (Boots), bevor die
+# Erstinstallation dauerhaft aufgibt. Verhindert Endlosschleifen.
+GG_MAX_INSTALL_ATTEMPTS="5"

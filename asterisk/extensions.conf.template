@@ -1,0 +1,113 @@
+;
+; extensions.conf - Dialplan des GSM-Gateways
+; Erzeugt von setup-sip.sh am @GENERATED_AT@
+;
+; Zwei Richtungen:
+;
+;   eingehend   Schweizer Mobilfunknetz -> iPhone -> Bluetooth HFP
+;               -> chan_mobile -> Asterisk -> SIP @SIP_EXTENSION@
+;
+;   ausgehend   SIP @SIP_EXTENSION@ -> Asterisk -> chan_mobile
+;               -> Bluetooth HFP -> iPhone -> Schweizer Mobilfunknetz
+;
+
+[general]
+static=yes
+; Verhindert, dass jemand ueber die Asterisk-CLI den Dialplan aendert
+; und die Datei damit ueberschreibt.
+writeprotect=yes
+clearglobalvars=no
+
+[globals]
+MOBILE_DEVICE=@MOBILE_ID@
+SIP_EXT=@SIP_EXTENSION@
+MAX_GSM_CALLS=@MAX_OUTGOING@
+
+;
+; ---------------------------------------------------------------------
+;  EINGEHEND: GSM -> SIP
+; ---------------------------------------------------------------------
+; chan_mobile startet eingehende Anrufe ohne Extension. Asterisk
+; verwendet dann automatisch die Extension "s".
+;
+[@MOBILE_CONTEXT@]
+exten => s,1,NoOp(Eingehender GSM-Anruf von ${CALLERID(num)} ueber ${MOBILE_DEVICE})
+ same => n,Set(CDR(userfield)=gsm-in)
+ same => n,Set(CALLERID(name)=GSM ${CALLERID(num)})
+ same => n,Dial(PJSIP/${SIP_EXT},45,rtT)
+ same => n,NoOp(Ergebnis: ${DIALSTATUS})
+ same => n,Hangup()
+
+; Falls eine Asterisk-Version doch eine Extension mitschickt.
+exten => _X.,1,Goto(s,1)
+exten => _+X.,1,Goto(s,1)
+
+;
+; ---------------------------------------------------------------------
+;  AUSGEHEND: SIP -> GSM
+; ---------------------------------------------------------------------
+; Nur authentifizierte Endpunkte landen in diesem Kontext. Es gibt
+; keinen anonymen SIP-Zugang - siehe pjsip.conf.
+;
+[from-sip]
+include => gsm-blocked
+include => gsm-test
+include => gsm-outgoing
+
+;
+; Gesperrte Ziele. Diese Eintraege stehen VOR den allgemeinen Mustern,
+; und Asterisk waehlt immer das genaueste Muster - Mehrwertnummern
+; sind damit zuverlaessig blockiert.
+;
+[gsm-blocked]
+@BLOCKED_EXTENSIONS@
+
+;
+; Testfunktionen ohne Kosten.
+;
+[gsm-test]
+; 600 = Echo-Test: alles, was man spricht, kommt zurueck.
+;       Damit prueft man Laufzeit und Lautstaerke der SIP-Strecke.
+exten => 600,1,NoOp(Echo-Test)
+ same => n,Answer()
+ same => n,Wait(1)
+ same => n,Echo()
+ same => n,Hangup()
+
+; 601 = Status des Mobilgeraets ansagen lassen (nur im Protokoll).
+exten => 601,1,NoOp(Status von ${MOBILE_DEVICE})
+ same => n,Answer()
+ same => n,MobileStatus(${MOBILE_DEVICE},MOBILESTATE)
+ same => n,NoOp(MobileStatus=${MOBILESTATE} 1=frei 2=belegt 3=nicht verbunden)
+ same => n,Wait(1)
+ same => n,Hangup()
+
+;
+; Ausgehende Anrufe ins Mobilfunknetz.
+;
+[gsm-outgoing]
+exten => _X.,1,Set(GSMNUM=${EXTEN})
+ same => n,Goto(gsm-dial,s,1)
+
+exten => _+X.,1,Set(GSMNUM=${EXTEN})
+ same => n,Goto(gsm-dial,s,1)
+
+[gsm-dial]
+exten => s,1,NoOp(Ausgehender Anruf an ${GSMNUM} ueber ${MOBILE_DEVICE})
+ same => n,Set(GROUP()=gsm-out)
+ same => n,GotoIf($[${GROUP_COUNT(gsm-out)} > ${MAX_GSM_CALLS}]?toomany)
+ same => n,Set(CDR(userfield)=gsm-out)
+ ; 60 Sekunden Klingelzeit, danach abbrechen.
+ same => n,Dial(Mobile/${MOBILE_DEVICE}/${GSMNUM},60)
+ same => n,NoOp(Ergebnis: ${DIALSTATUS})
+ same => n,Goto(ende,1)
+ same => n(toomany),NoOp(Es laeuft bereits ein GSM-Gespraech)
+ same => n,Busy(5)
+ same => n,Hangup()
+
+exten => ende,1,Hangup()
+
+; Fehlerbehandlung, falls chan_mobile das Geraet gerade nicht hat.
+exten => failed,1,NoOp(GSM-Leitung nicht verfuegbar)
+ same => n,Congestion(5)
+ same => n,Hangup()

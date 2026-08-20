@@ -1,0 +1,15 @@
+# =====================================================================
+#  gsm-gateway-status.timer
+#  Installiert nach: /etc/systemd/system/gsm-gateway-status.timer
+# =====================================================================
+[Unit]
+Description=GSM Gateway Statusdaten regelmaessig aktualisieren
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=60s
+AccuracySec=10s
+Unit=gsm-gateway-status.service
+
+[Install]
+WantedBy=timers.target

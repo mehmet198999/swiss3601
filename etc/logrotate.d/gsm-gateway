@@ -1,0 +1,18 @@
+# Logrotation fuer die Protokolle des GSM-Gateways.
+# Ohne diese Datei wuerden die Protokolle unbegrenzt wachsen und
+# irgendwann die SD-Karte fuellen.
+#
+# weekly + maxsize bedeutet: normalerweise woechentlich, bei starkem
+# Aufkommen aber sofort, sobald die Datei zu gross wird.
+
+/var/log/gsm-gateway/*.log {
+	weekly
+	maxsize 5M
+	rotate 8
+	missingok
+	notifempty
+	compress
+	delaycompress
+	copytruncate
+	create 0644 root root
+}

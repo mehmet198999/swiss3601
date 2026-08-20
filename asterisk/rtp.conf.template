@@ -1,0 +1,14 @@
+;
+; rtp.conf - Portbereich fuer die Sprachdaten
+; Erzeugt von setup-sip.sh am @GENERATED_AT@
+;
+; Der Bereich ist bewusst klein gehalten: das Gateway fuehrt hoechstens
+; ein Gespraech gleichzeitig. Ein kleiner Bereich laesst sich in der
+; Firewall praeziser freigeben.
+;
+[general]
+rtpstart=@RTP_START@
+rtpend=@RTP_END@
+; ICE/STUN wird im LAN nicht gebraucht und wuerde nur Anfragen ins
+; Internet ausloesen.
+icesupport=no
