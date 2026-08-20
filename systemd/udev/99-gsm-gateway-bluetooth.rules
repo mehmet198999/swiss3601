@@ -1,0 +1,14 @@
+# =====================================================================
+#  99-gsm-gateway-bluetooth.rules
+#
+#  Sobald ein Bluetooth-Controller auftaucht (Boot oder USB-Adapter
+#  eingesteckt), wird gsm-gateway-hci@<hciX>.service gestartet.
+#  Dieser Dienst setzt das HCI Voice Setting auf 0x0060 - ohne diesen
+#  Wert verweigert chan_mobile den Adapter komplett.
+#
+#  DEVTYPE=="host" trifft nur auf Controller zu, nicht auf einzelne
+#  Verbindungen (DEVTYPE=="link").
+#
+#  Installiert nach: /etc/udev/rules.d/99-gsm-gateway-bluetooth.rules
+# =====================================================================
+ACTION=="add", SUBSYSTEM=="bluetooth", ENV{DEVTYPE}=="host", TAG+="systemd", ENV{SYSTEMD_WANTS}+="gsm-gateway-hci@$name.service"

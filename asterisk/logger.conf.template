@@ -1,0 +1,18 @@
+;
+; logger.conf - Protokollierung von Asterisk
+; Erzeugt von setup-chan-mobile.sh am @GENERATED_AT@
+;
+; Der Kanal "security" ist wichtig: fail2ban wertet ihn aus, um
+; SIP-Angriffe zu erkennen.
+;
+[general]
+dateformat=%F %T
+use_callids=yes
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error
+security => security
+; "full" hilft bei der Fehlersuche an Bluetooth und Audio.
+; logrotate begrenzt die Groesse - siehe /etc/logrotate.d/gsm-gateway.
+full => notice,warning,error,verbose(3)

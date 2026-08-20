@@ -1,0 +1,59 @@
+#!/usr/sbin/nft -f
+#
+# gsm-gateway.nft - Firewallregeln des GSM-Gateways
+# Erzeugt von setup-firewall.sh am @GENERATED_AT@
+#
+# Bewusste Entwurfsentscheidung
+# -----------------------------
+# Diese Regeln liegen in einer EIGENEN Tabelle mit "policy accept".
+# Es wird also nicht der gesamte Netzwerkverkehr blockiert, sondern
+# gezielt nur SIP, RTP und die Statusseite auf das LAN begrenzt.
+#
+# Warum? Ein Anfaenger, der sich per SSH aus dem WLAN verbindet, soll
+# sich mit diesem Setup nicht selbst aussperren koennen. Die Aufgabe
+# hier ist "kein offener SIP-Server", nicht "komplette Systemfirewall".
+#
+# Wer eine vollstaendige Firewall moechte, ergaenzt sie in
+# /etc/nftables.conf - diese Tabelle bleibt davon unberuehrt.
+#
+# Anzeigen:  sudo nft list table inet gsm_gateway
+#
+
+table inet gsm_gateway {
+	# Netze, die telefonieren duerfen. Kommt spaeter WireGuard dazu,
+	# einfach GG_LAN_NETWORKS erweitern und setup-firewall.sh erneut
+	# ausfuehren.
+	set lan_v4 {
+		type ipv4_addr
+		flags interval
+		elements = { @LAN_ELEMENTS@ }
+	}
+
+	chain input {
+		type filter hook input priority 0; policy accept;
+
+		# Eigener Rechner und bestehende Verbindungen zuerst.
+		iif lo accept
+		ct state established,related accept
+
+		# --- erlaubt: SIP und RTP aus dem LAN ---
+		ip saddr @lan_v4 udp dport @SIP_PORT@ accept
+		ip saddr @lan_v4 tcp dport @SIP_PORT@ accept
+		ip saddr @lan_v4 udp dport @RTP_START@-@RTP_END@ accept
+
+		# --- erlaubt: Statusseite aus dem LAN ---
+		ip saddr @lan_v4 tcp dport @WEB_PORT@ accept
+
+		# --- alles andere auf diesen Ports wird verworfen ---
+		# Das trifft auch IPv6, weil die "ip saddr"-Regeln oben nur
+		# fuer IPv4 gelten und IPv6-Pakete deshalb hier landen.
+		udp dport @SIP_PORT@ counter drop
+		tcp dport @SIP_PORT@ counter drop
+		udp dport @RTP_START@-@RTP_END@ counter drop
+		tcp dport @WEB_PORT@ counter drop
+
+		# SIP over TLS ist nicht eingerichtet - Port trotzdem dichtmachen.
+		udp dport 5061 counter drop
+		tcp dport 5061 counter drop
+	}
+}

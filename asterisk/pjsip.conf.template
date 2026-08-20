@@ -1,0 +1,79 @@
+;
+; pjsip.conf - lokale SIP-Konfiguration des GSM-Gateways
+;
+; Erzeugt von setup-sip.sh am @GENERATED_AT@
+; Aenderungen von Hand werden beim naechsten Lauf ueberschrieben.
+;
+; SICHERHEIT - bitte nicht leichtfertig aendern:
+;   * Der SIP-Transport lauscht NUR auf der LAN-Adresse @LAN_IP@,
+;     nicht auf 0.0.0.0. Damit ist der Dienst aus dem Internet auch
+;     dann nicht erreichbar, wenn im Router versehentlich eine
+;     Portweiterleitung existiert.
+;   * Zusaetzlich begrenzt eine ACL alle Anfragen auf die konfigurierten
+;     LAN-Netze.
+;   * Es gibt bewusst KEINEN anonymen Endpunkt. Wer sich nicht
+;     authentifiziert, kommt nicht in den Dialplan und kann daher auch
+;     keine kostenpflichtigen Anrufe ausloesen.
+;   * Fuer den Zugriff von unterwegs ist WireGuard vorgesehen,
+;     NICHT eine Portweiterleitung auf 5060.
+;
+
+[global]
+type=global
+user_agent=gsm-gateway
+; Nicht identifizierbare Anfragen werden gezaehlt und als
+; Sicherheitsereignis gemeldet (Grundlage fuer fail2ban).
+unidentified_request_count=5
+unidentified_request_period=5
+unidentified_request_prune_interval=30
+
+;
+; Transport - ausschliesslich auf der LAN-Adresse.
+;
+[transport-lan]
+type=transport
+protocol=udp
+bind=@LAN_IP@:@SIP_PORT@
+@LOCAL_NET_LINES@
+
+;
+; Zugriffsliste. Sections mit type=acl gelten automatisch fuer den
+; gesamten PJSIP-Verkehr.
+;
+[acl-lan]
+type=acl
+deny=0.0.0.0/0
+@ACL_PERMIT_LINES@
+
+;
+; Nebenstelle @SIP_EXTENSION@ - das Softphone im LAN.
+;
+[@SIP_EXTENSION@-auth]
+type=auth
+auth_type=userpass
+username=@SIP_EXTENSION@
+password=@SIP_PASSWORD@
+
+[@SIP_EXTENSION@]
+type=aor
+max_contacts=2
+remove_existing=yes
+qualify_frequency=60
+
+[@SIP_EXTENSION@]
+type=endpoint
+context=from-sip
+; chan_mobile liefert 8-kHz-Schmalband. alaw/ulaw sind verlustfrei
+; dazu, gsm spart Bandbreite im WLAN.
+disallow=all
+allow=alaw
+allow=ulaw
+allow=gsm
+auth=@SIP_EXTENSION@-auth
+aors=@SIP_EXTENSION@
+direct_media=no
+force_rport=yes
+rewrite_contact=yes
+rtp_symmetric=yes
+; Nur ein Gespraech gleichzeitig - mehr kann die GSM-Leitung nicht.
+device_state_busy_at=1

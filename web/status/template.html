@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
+<title>GSM &rarr; SIP Gateway</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --fg: #1c1e21; --muted: #6b7280;
+    --line: #e3e5e8;
+    --ok: #1a7f37; --ok-bg: #e6f4ea;
+    --warn: #9a6700; --warn-bg: #fff4d6;
+    --fail: #b42318; --fail-bg: #fde8e6;
+    --pending: #3b5bdb; --pending-bg: #e7ebfd;
+    --skip: #6b7280; --skip-bg: #eceef1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c; --card: #1f2227; --fg: #e6e8eb; --muted: #9aa1ab;
+      --line: #2c3038;
+      --ok-bg: #16301f; --warn-bg: #33290d; --fail-bg: #3a1a17;
+      --pending-bg: #1b2450; --skip-bg: #292d34;
+      --ok: #6ee7a0; --warn: #f5c451; --fail: #ff9a90;
+      --pending: #9db2ff; --skip: #9aa1ab;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 1.5rem 1rem; background: var(--bg); color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 .25rem; }
+  h2 { font-size: .95rem; margin: 1.5rem 0 .5rem; color: var(--muted);
+       text-transform: uppercase; letter-spacing: .05em; }
+  .sub { color: var(--muted); font-size: .85rem; margin: 0 0 1.25rem; }
+  .card { background: var(--card); border: 1px solid var(--line);
+          border-radius: 10px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  td { padding: .55rem .75rem; border-top: 1px solid var(--line);
+       vertical-align: top; }
+  tr:first-child td { border-top: none; }
+  .label { font-weight: 600; white-space: nowrap; }
+  .detail { color: var(--muted); font-size: .85rem; word-break: break-word; }
+  .badge { display: inline-block; min-width: 4.5rem; text-align: center;
+           padding: .1rem .5rem; border-radius: 999px;
+           font-size: .78rem; font-weight: 700; letter-spacing: .02em; }
+  .badge.ok      { color: var(--ok);      background: var(--ok-bg); }
+  .badge.warn    { color: var(--warn);    background: var(--warn-bg); }
+  .badge.fail    { color: var(--fail);    background: var(--fail-bg); }
+  .badge.pending { color: var(--pending); background: var(--pending-bg); }
+  .badge.skip    { color: var(--skip);    background: var(--skip-bg); }
+  footer { margin-top: 1.5rem; color: var(--muted); font-size: .78rem; }
+  code { background: var(--skip-bg); padding: .05rem .3rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>GSM &rarr; SIP Gateway</h1>
+  <p class="sub">@HOSTNAME@ &middot; Stand: @GENERATED@ &middot; Seite aktualisiert sich alle 30&nbsp;Sekunden</p>
+
+  <h2>Automatische Pr&uuml;fungen</h2>
+  <div class="card">
+    <table>
+      @CHECK_ROWS@
+    </table>
+  </div>
+
+  <h2>Manuelle Tests</h2>
+  <div class="card">
+    <table>
+      @MANUAL_ROWS@
+    </table>
+  </div>
+
+  <footer>
+    Nur im lokalen Netz erreichbar. SIP-Zugang aus dem Internet ist nicht aktiviert.<br>
+    Details auf der Kommandozeile: <code>sudo gateway-test</code>
+  </footer>
+</div>
+</body>
+</html>

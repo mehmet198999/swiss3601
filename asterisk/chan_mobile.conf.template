@@ -1,0 +1,46 @@
+;
+; chan_mobile.conf - Bluetooth-Mobiltelefon als GSM-Leitung
+;
+; ACHTUNG: Diese Datei wird von setup-chan-mobile.sh und pair-iphone.sh
+; erzeugt bzw. ergaenzt. Aenderungen von Hand werden beim naechsten Lauf
+; ueberschrieben - vorher wird aber immer ein Backup unter
+; /etc/asterisk/backup/ angelegt.
+;
+; Warum "chan_mobile.conf" und nicht "mobile.conf"?
+; Aktuelle Asterisk-Versionen lesen zuerst chan_mobile.conf und nur
+; ersatzweise die alte mobile.conf. Damit beide Namen funktionieren,
+; legt setup-chan-mobile.sh zusaetzlich einen Symlink
+; /etc/asterisk/mobile.conf -> chan_mobile.conf an.
+;
+; Erzeugt am: @GENERATED_AT@
+;
+
+[general]
+; Sekunden zwischen zwei Verbindungsversuchen zu einem Geraet.
+; Das iPhone trennt HFP-Verbindungen im Leerlauf gern - chan_mobile
+; baut sie in diesem Takt wieder auf.
+interval=30
+
+;
+; Bluetooth-Adapter.
+; id      = frei waehlbarer Name, wird unten bei den Geraeten referenziert
+; address = MAC-Adresse DIESES Adapters (nicht die des Telefons!)
+;
+; Wichtig: Ein Adapter kann immer nur EIN Geraet gleichzeitig bedienen.
+; Fuer eine zweite SIM braucht es einen zweiten Bluetooth-Adapter.
+;
+[adapter]
+id=@ADAPTER_ID@
+address=@ADAPTER_MAC@
+
+; Ab hier haengt pair-iphone.sh die gekoppelten Telefone an.
+; Beispiel (die Werte stammen dann aus dem echten Pairing):
+;
+; [iphone]
+; address=AA:BB:CC:DD:EE:FF   ; MAC des iPhones, ausgelesen aus BlueZ
+; port=6                      ; RFCOMM-Kanal des Handsfree-Audio-Gateway
+; context=from-mobile         ; Dialplan-Kontext fuer eingehende Anrufe
+; adapter=@ADAPTER_ID@        ; welcher Bluetooth-Adapter
+; group=1                     ; Kanalgruppe
+; type=phone                  ; phone = Telefon, headset = Headset
+;

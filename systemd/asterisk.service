@@ -1,0 +1,52 @@
+# =====================================================================
+#  asterisk.service
+#
+#  Wird NUR installiert, wenn Asterisk aus dem Quellcode gebaut wurde.
+#  Kommt Asterisk aus einem Distributionspaket, bringt dieses seine
+#  eigene Unit mit und diese Datei wird nicht verwendet.
+#
+#  Wichtig fuer chan_mobile:
+#    Asterisk laeuft als Benutzer "asterisk" und braucht trotzdem
+#    Zugriff auf rohe Bluetooth-Sockets (HCI, RFCOMM, SCO).
+#    Das loesen die AmbientCapabilities weiter unten - deshalb muss
+#    Asterisk NICHT als root laufen.
+#
+#  Der Pfad /usr/sbin/asterisk ergibt sich aus dem Build-Prefix
+#  --prefix=/usr, das install-asterisk.sh fest verwendet.
+#
+#  Installiert nach: /etc/systemd/system/asterisk.service
+# =====================================================================
+[Unit]
+Description=Asterisk PBX
+Documentation=https://docs.asterisk.org/
+After=network-online.target bluetooth.service
+Wants=network-online.target bluetooth.service
+
+[Service]
+Type=simple
+User=asterisk
+Group=asterisk
+ExecStart=/usr/sbin/asterisk -f -C /etc/asterisk/asterisk.conf
+ExecReload=/usr/sbin/asterisk -rx "core reload"
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+RuntimeDirectory=asterisk
+RuntimeDirectoryMode=0750
+
+# CAP_NET_RAW    -> HCI-Sockets und SCO-Audio (chan_mobile)
+# CAP_NET_ADMIN  -> HCI-Geraeteabfragen / Inquiry ("mobile search")
+# CAP_NET_BIND_SERVICE -> Ports unter 1024, falls spaeter benoetigt
+# CAP_SYS_NICE   -> Echtzeitprioritaet fuer die Audioverarbeitung
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_SYS_NICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_SYS_NICE
+
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

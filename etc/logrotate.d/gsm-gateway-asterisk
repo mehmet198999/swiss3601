@@ -1,0 +1,30 @@
+# Logrotation fuer die Asterisk-Protokolle.
+#
+# Diese Datei wird erst installiert, wenn der Benutzer "asterisk"
+# existiert - sonst lehnt logrotate die gesamte Konfiguration ab.
+# Bringt das Asterisk-Paket bereits eine eigene Rotation mit, wird
+# diese Datei nicht installiert.
+
+/var/log/asterisk/messages
+/var/log/asterisk/full
+/var/log/asterisk/security
+/var/log/asterisk/queue_log {
+	weekly
+	maxsize 10M
+	rotate 8
+	missingok
+	notifempty
+	compress
+	delaycompress
+	create 0640 asterisk asterisk
+	sharedscripts
+	postrotate
+		# Asterisk muss seine Protokolldateien neu oeffnen, sonst
+		# schreibt es weiter in die bereits rotierte Datei.
+		# Der Fehlerfall (Asterisk laeuft gerade nicht) ist hier
+		# unkritisch und darf die Rotation nicht abbrechen.
+		if [ -x /usr/sbin/asterisk ]; then
+			/usr/sbin/asterisk -rx 'logger reload' > /dev/null 2>&1 || :
+		fi
+	endscript
+}

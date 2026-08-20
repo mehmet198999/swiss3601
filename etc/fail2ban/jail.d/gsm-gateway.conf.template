@@ -1,0 +1,16 @@
+# fail2ban-Konfiguration des GSM-Gateways
+# Erzeugt von setup-firewall.sh am @GENERATED_AT@
+#
+# Schuetzt vor SIP-Registrierungsangriffen. Auch wenn der SIP-Port
+# ohnehin nur im LAN erreichbar ist: sobald spaeter WireGuard dazu
+# kommt, ist das die zweite Verteidigungslinie.
+
+[asterisk]
+enabled  = true
+port     = @SIP_PORT@,5061
+protocol = udp
+logpath  = /var/log/asterisk/messages
+maxretry = 5
+findtime = 600
+bantime  = 3600
+@BANACTION_LINE@

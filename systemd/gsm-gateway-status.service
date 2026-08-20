@@ -1,0 +1,24 @@
+# =====================================================================
+#  gsm-gateway-status.service
+#
+#  Schreibt den aktuellen Gateway-Status als JSON nach
+#  /run/gsm-gateway/status.json. Die Web-Statusseite liest nur diese
+#  Datei und braucht deshalb selbst keine root-Rechte.
+#
+#  Wird von gsm-gateway-status.timer regelmaessig gestartet.
+#
+#  Installiert nach: /etc/systemd/system/gsm-gateway-status.service
+# =====================================================================
+[Unit]
+Description=GSM Gateway Statusdaten erzeugen
+After=asterisk.service bluetooth.service
+
+[Service]
+Type=oneshot
+RuntimeDirectory=gsm-gateway
+RuntimeDirectoryMode=0755
+# Das Verzeichnis muss bestehen bleiben, wenn dieser oneshot endet.
+RuntimeDirectoryPreserve=yes
+ExecStart=/opt/gsm-gateway/scripts/gateway-test.sh --json --output /run/gsm-gateway/status.json
+TimeoutStartSec=180
+Nice=10

@@ -1,0 +1,8 @@
+; --- von pair-iphone.sh angehaengt am @GENERATED_AT@ ---
+[@MOBILE_ID@]
+address=@PHONE_MAC@
+port=@RFCOMM_PORT@
+context=@MOBILE_CONTEXT@
+adapter=@ADAPTER_ID@
+group=1
+type=phone

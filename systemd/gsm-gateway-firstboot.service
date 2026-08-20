@@ -1,0 +1,44 @@
+# =====================================================================
+#  gsm-gateway-firstboot.service
+#
+#  Fuehrt die komplette Erstinstallation beim ersten Start durch.
+#  Laeuft dank der beiden ConditionPathExists-Zeilen nur so lange, wie
+#  das Setup weder abgeschlossen noch endgueltig aufgegeben wurde.
+#
+#  Installiert nach: /etc/systemd/system/gsm-gateway-firstboot.service
+# =====================================================================
+[Unit]
+Description=GSM to SIP Gateway - Erstinstallation beim ersten Boot
+Documentation=file:/opt/gsm-gateway/README.md
+After=network-online.target time-sync.target systemd-timesyncd.service
+Wants=network-online.target
+
+# Nicht erneut laufen, wenn das Setup fertig ist ...
+ConditionPathExists=!/var/lib/gsm-gateway/setup-complete
+# ... oder nach zu vielen Fehlversuchen dauerhaft gestoppt wurde.
+ConditionPathExists=!/var/lib/gsm-gateway/setup-abandoned
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+
+# Der Asterisk-Quellcode-Build braucht auf einem Raspberry Pi 3 mehrere
+# Stunden. Ohne diese Zeile wuerde systemd nach 90 Sekunden abbrechen.
+TimeoutStartSec=infinity
+
+ExecStart=/opt/gsm-gateway/install/firstboot-install.sh
+
+# Ausgabe in Journal und auf die Konsole, damit man am angeschlossenen
+# Bildschirm sieht, was passiert.
+StandardOutput=journal+console
+StandardError=journal+console
+
+# Die Installation soll das System nicht komplett ausbremsen.
+Nice=5
+
+# Kein automatischer Neustart: ein Fehlversuch wird protokolliert und
+# beim naechsten Boot erneut versucht (bis GG_MAX_INSTALL_ATTEMPTS).
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
