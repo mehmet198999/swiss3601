@@ -38,13 +38,14 @@ Der Raspberry Pi installiert und konfiguriert alles selbst.
 8. [Telefonie-Tests](#8-telefonie-tests)
 9. [Befehlsübersicht](#9-befehlsübersicht)
 10. [Statusseite im Browser](#10-statusseite-im-browser)
-11. [Sicherheit](#11-sicherheit)
-12. [Zugriff von unterwegs (WireGuard)](#12-zugriff-von-unterwegs-wireguard)
-13. [Wenn etwas nicht funktioniert](#13-wenn-etwas-nicht-funktioniert)
-14. [Projektstruktur und Pfade](#14-projektstruktur-und-pfade)
-15. [Backup und Deinstallation](#15-backup-und-deinstallation)
-16. [Annahmen und bekannte Einschränkungen](#16-annahmen-und-bekannte-einschränkungen)
-17. [Zweite Phase](#17-zweite-phase)
+11. [Watchdog und Anrufliste](#11-watchdog-und-anrufliste)
+12. [Sicherheit](#12-sicherheit)
+13. [Zugriff von unterwegs (WireGuard)](#13-zugriff-von-unterwegs-wireguard)
+14. [Wenn etwas nicht funktioniert](#14-wenn-etwas-nicht-funktioniert)
+15. [Projektstruktur und Pfade](#15-projektstruktur-und-pfade)
+16. [Backup und Deinstallation](#16-backup-und-deinstallation)
+17. [Annahmen und bekannte Einschränkungen](#17-annahmen-und-bekannte-einschränkungen)
+18. [Zweite Phase](#18-zweite-phase)
 
 ---
 
@@ -465,6 +466,9 @@ Alle Befehle brauchen `sudo`.
 | `sudo bluetooth-check` | Bluetooth- und HFP-Diagnose |
 | `sudo pair-iphone` | iPhone koppeln |
 | `sudo gateway-credentials` | SIP-Zugangsdaten anzeigen |
+| `sudo gateway-calls` | Anrufliste (eingehend, ausgehend, verpasst) |
+| `sudo gateway-calls --missed` | nur verpasste Anrufe |
+| `sudo gateway-watchdog --status` | Zustand der Verbindungsüberwachung |
 | `sudo backup-gateway` | Konfiguration sichern |
 | `sudo uninstall-gateway` | Gateway entfernen |
 | `sudo gateway-hci-prepare --show hci1` | Bluetooth-Adapter prüfen |
@@ -503,7 +507,79 @@ setzen und `sudo /opt/gsm-gateway/install/setup-web.sh` ausführen.
 
 ---
 
-## 11. Sicherheit
+## 11. Watchdog und Anrufliste
+
+### Der Watchdog
+
+Ein iPhone trennt die Bluetooth-Verbindung im Leerlauf, nach einem
+iOS-Update oder wenn es zwischendurch im Auto war. Normalerweise findet
+`chan_mobile` von selbst wieder hin. Wenn aber Asterisk hängt, das Modul
+entladen wurde oder der Bluetooth-Adapter klemmt, passiert nichts mehr —
+und das fällt erst auf, wenn ein wichtiger Anruf nicht ankommt.
+
+Der Watchdog prüft deshalb **jede Minute** die ganze Kette und stellt sie
+gestuft wieder her:
+
+| Nach | Maßnahme |
+|---|---|
+| 3 Minuten | BlueZ bitten, die Verbindung aufzubauen |
+| 6 Minuten | `chan_mobile` neu laden |
+| 10 Minuten | Asterisk neu starten |
+| 15 Minuten | Bluetooth-Adapter aus- und einschalten |
+| 20 Minuten | aufgeben, einmal melden, weiter beobachten |
+
+Zwei Dinge sind dabei wichtig:
+
+* **Während eines Gesprächs unternimmt der Watchdog nichts.** Eine
+  Überwachung, die ein laufendes Telefonat abschneidet, wäre schlimmer
+  als gar keine.
+* **Er startet nicht endlos neu.** Nach 20 erfolglosen Minuten hört er
+  auf einzugreifen und meldet den Zustand — statt den Pi im Kreis
+  neu zu starten.
+
+```bash
+sudo gateway-watchdog --status     # aktueller Zustand
+sudo gateway-watchdog --reset      # Zähler zurücksetzen
+sudo tail -f /var/log/gsm-gateway/watchdog.log
+```
+
+Abschalten: in `/etc/gsm-gateway/gateway.conf` `GG_WATCHDOG_ENABLE="no"`
+setzen und `sudo /opt/gsm-gateway/install/setup-monitoring.sh` ausführen.
+
+### Die Anrufliste
+
+Asterisk zeichnet jedes Gespräch auf — auch die **nicht angenommenen**.
+Genau die sucht man am häufigsten.
+
+```bash
+sudo gateway-calls
+```
+
+```
+Zeitpunkt            Richtung    Nummer                 Dauer  Ergebnis
+-----------------------------------------------------------------------
+2026-08-20 14:32:11  eingehend   +41791234567            2:44  angenommen
+2026-08-20 13:10:44  eingehend   +41791234567               -  nicht angenommen *
+2026-08-20 12:02:03  ausgehend   0791119988              7:22  angenommen
+
+* = verpasster Anruf  (1 in dieser Liste)
+```
+
+Nur die verpassten: `sudo gateway-calls --missed`
+
+Die letzten Anrufe erscheinen auch auf der Statusseite.
+
+> **Datenschutz:** In der Aufzeichnung stehen Rufnummern und Zeitpunkte.
+> Die Datei ist nur für `root` und den Benutzer `asterisk` lesbar.
+> Wer die Nummern nicht im Browser sehen möchte, hat zwei Möglichkeiten
+> in `/etc/gsm-gateway/gateway.conf`:
+> `GG_WEB_CALLS_MASK="4"` zeigt `+4179123xxxx` statt der vollen Nummer,
+> `GG_WEB_SHOW_CALLS="no"` blendet die Liste im Browser ganz aus.
+> Ganz abschalten lässt sich die Aufzeichnung mit `GG_CDR_ENABLE="no"`.
+
+---
+
+## 12. Sicherheit
 
 Ein Telefon-Gateway ist ein lohnendes Ziel: Wer es übernimmt,
 telefoniert auf Ihre Rechnung. Deshalb ist das Setup von vornherein
@@ -542,7 +618,7 @@ zurückhaltend eingestellt.
 
 ---
 
-## 12. Zugriff von unterwegs (WireGuard)
+## 13. Zugriff von unterwegs (WireGuard)
 
 Vorbereitet, aber **absichtlich noch nicht aktiviert**. Erst muss die
 Telefonie im lokalen Netz zuverlässig laufen — sonst sucht man später
@@ -560,7 +636,7 @@ Die vollständige Schritt-für-Schritt-Anleitung liegt auf dem Pi unter
 
 ---
 
-## 13. Wenn etwas nicht funktioniert
+## 14. Wenn etwas nicht funktioniert
 
 Erste Anlaufstelle:
 
@@ -580,6 +656,7 @@ Protokolle liegen alle in `/var/log/gsm-gateway/`:
 | `bluetooth.log` | Bluetooth, Pairing, HFP |
 | `asterisk.log` | Asterisk-Installation und -Build |
 | `status.log` | Statusberichte |
+| `watchdog.log` | Eingriffe der Verbindungsüberwachung |
 
 Ausführliche Hilfe zu den häufigsten Problemen:
 **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)**
@@ -601,7 +678,7 @@ sudo /opt/gsm-gateway/install/firstboot-install.sh
 
 ---
 
-## 14. Projektstruktur und Pfade
+## 15. Projektstruktur und Pfade
 
 ```
 gsm-gateway/
@@ -615,13 +692,16 @@ gsm-gateway/
 │   ├── setup-chan-mobile.sh      chan_mobile konfigurieren
 │   ├── setup-sip.sh              SIP, Wählplan, Passwort
 │   ├── setup-firewall.sh         nftables und fail2ban
-│   └── setup-web.sh              Statusseite
+│   ├── setup-web.sh              Statusseite
+│   └── setup-monitoring.sh       Watchdog und Anrufliste
 ├── scripts/
 │   ├── gateway-check.sh          Hardware- und Systemdiagnose
 │   ├── bluetooth-check.sh        Bluetooth-Diagnose
 │   ├── pair-iphone.sh            iPhone koppeln
 │   ├── gateway-test.sh           Gesamtstatus / JSON
 │   ├── gateway-credentials.sh    SIP-Zugangsdaten anzeigen
+│   ├── gateway-watchdog.sh       Verbindung überwachen und heilen
+│   ├── gateway-calls.sh          Anrufliste
 │   ├── gateway-hci-prepare.sh    Adapter für chan_mobile vorbereiten
 │   ├── backup-gateway.sh         Sicherung
 │   └── uninstall-gateway.sh      Deinstallation
@@ -630,12 +710,14 @@ gsm-gateway/
 │   ├── hci-voice.py              HCI Voice Setting lesen/setzen
 │   ├── sdp-rfcomm.py             RFCOMM-Kanal per SDP ermitteln
 │   ├── sco-check.py              SCO-Unterstützung prüfen
+│   ├── cdr-report.py             Anrufaufzeichnung auswerten
 │   ├── ini-set.py                BlueZ-Konfiguration bearbeiten
 │   └── render-template.py        Vorlagen ausfüllen
 ├── systemd/
 │   ├── gsm-gateway-firstboot.service
 │   ├── gsm-gateway-hci@.service
 │   ├── gsm-gateway-status.service / .timer
+│   ├── gsm-gateway-watchdog.service / .timer
 │   ├── gsm-gateway-web.service
 │   ├── asterisk.service          nur bei Quellcode-Installation
 │   └── udev/99-gsm-gateway-bluetooth.rules
@@ -645,6 +727,7 @@ gsm-gateway/
 │   ├── pjsip.conf.template
 │   ├── extensions.conf.template
 │   ├── rtp.conf.template
+│   ├── cdr.conf.template
 │   └── logger.conf.template
 ├── etc/                          Vorlagen für /etc
 │   ├── nftables/gsm-gateway.nft.template
@@ -652,6 +735,7 @@ gsm-gateway/
 │   └── logrotate.d/gsm-gateway*
 ├── web/status/                   lokale Statusseite
 ├── config/gateway.conf.example   zentrale Einstellungen
+├── keys/asterisk-release.asc     Signaturschlüssel für den Asterisk-Download
 ├── sdcard/                       SD-Karte vorbereiten (PC-Seite)
 └── docs/                         Details, Grenzen, Fehlersuche
 ```
@@ -666,6 +750,7 @@ Auf dem Raspberry Pi:
 | `/etc/asterisk/` | Asterisk-Konfiguration |
 | `/etc/asterisk/backup/` | Sicherungen vor jeder Änderung |
 | `/var/log/gsm-gateway/` | Protokolle |
+| `/var/log/asterisk/cdr-csv/` | Anrufaufzeichnung |
 | `/var/lib/gsm-gateway/` | Installationsstatus und ermittelte Werte |
 | `/var/backups/gsm-gateway/` | Sicherungen |
 | `/usr/local/bin/` | die Befehle aus der Übersicht |
@@ -681,7 +766,7 @@ Namen funktionieren.
 
 ---
 
-## 15. Backup und Deinstallation
+## 16. Backup und Deinstallation
 
 **Sichern** (vor jeder größeren Änderung sinnvoll):
 
@@ -706,7 +791,7 @@ SSH und Netzwerk. Vorher wird automatisch ein Backup erstellt.
 
 ---
 
-## 16. Annahmen und bekannte Einschränkungen
+## 17. Annahmen und bekannte Einschränkungen
 
 Die vollständige, ehrliche Liste steht in
 **[docs/LIMITATIONS.md](docs/LIMITATIONS.md)**. Die wichtigsten Punkte:
@@ -730,7 +815,7 @@ Die vollständige, ehrliche Liste steht in
 
 ---
 
-## 17. Zweite Phase
+## 18. Zweite Phase
 
 Eine zweite SIM-Karte und ein zweites Gateway sind **bewusst nicht** Teil
 dieses Setups. Erst muss die Kette

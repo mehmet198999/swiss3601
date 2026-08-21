@@ -228,7 +228,8 @@ prepare_rootfs() {
 	local script base
 	for script in gateway-check.sh bluetooth-check.sh gateway-test.sh \
 		pair-iphone.sh backup-gateway.sh uninstall-gateway.sh \
-		gateway-credentials.sh gateway-hci-prepare.sh; do
+		gateway-credentials.sh gateway-hci-prepare.sh \
+		gateway-watchdog.sh gateway-calls.sh; do
 		base="${script%.sh}"
 		run ln -sfn "/opt/gsm-gateway/scripts/${script}" "${ROOTFS}/usr/local/bin/${script}"
 		run ln -sfn "/opt/gsm-gateway/scripts/${script}" "${ROOTFS}/usr/local/bin/${base}"

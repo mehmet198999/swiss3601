@@ -24,9 +24,13 @@ GG_ASTERISK_MIRROR="https://downloads.asterisk.org/pub/telephony/asterisk"
 
 # GPG-Fingerprint des Asterisk-Release-Signaturschluessels.
 # Wird zur Signaturpruefung des heruntergeladenen Tarballs verwendet.
+# Der passende oeffentliche Schluessel liegt dem Projekt bei unter
+# /opt/gsm-gateway/keys/asterisk-release.asc und wird bevorzugt
+# verwendet - so haengt die Echtheitspruefung nicht davon ab, ob ein
+# Keyserver erreichbar ist.
 GG_ASTERISK_GPG_FPR="F2FC93DB7587BD1FB49E045A5D984BE337191CE7"
 
-# Keyserver fuer den Import des Signaturschluessels.
+# Keyserver, falls der mitgelieferte Schluessel fehlt.
 GG_ASTERISK_KEYSERVER="hkps://keys.openpgp.org"
 
 # Asterisk auch dann aus dem Quellcode bauen, wenn ein APT-Paket
@@ -117,6 +121,40 @@ GG_BLOCKED_PREFIXES="0900 0901 0906 00881 00882 00883 00870 00871 00872 00873"
 # Maximale gleichzeitige ausgehende GSM-Anrufe.
 # Das iPhone kann ueber HFP nur ein Gespraech gleichzeitig fuehren.
 GG_MAX_OUTGOING_CALLS="1"
+
+# ---------------------------------------------------------------------
+# Ueberwachung (Watchdog)
+# ---------------------------------------------------------------------
+
+# Watchdog aktivieren (yes/no).
+# Prueft jede Minute, ob Asterisk antwortet, chan_mobile geladen ist und
+# das iPhone verbunden ist - und stellt die Verbindung gestuft wieder
+# her. Waehrend eines laufenden Gespraechs unternimmt er nichts.
+GG_WATCHDOG_ENABLE="yes"
+
+# ---------------------------------------------------------------------
+# Anrufliste (Call Detail Records)
+# ---------------------------------------------------------------------
+
+# Anrufe aufzeichnen (yes/no). Ohne Aufzeichnung sieht man nicht, dass
+# ein Anruf gar nicht erst angekommen ist.
+# Datenschutz: In der Datei stehen Rufnummern und Zeitpunkte.
+GG_CDR_ENABLE="yes"
+
+# Pfad der Aufzeichnung.
+GG_CDR_FILE="/var/log/asterisk/cdr-csv/Master.csv"
+
+# Anrufliste auch auf der Statusseite anzeigen (yes/no).
+GG_WEB_SHOW_CALLS="yes"
+
+# Wie viele Ziffern am Ende der Rufnummer auf der Statusseite durch x
+# ersetzt werden. 0 = vollstaendig anzeigen, 4 = z.B. +4179123xxxx.
+# Betrifft nur die Weboberflaeche - "sudo gateway-calls" zeigt immer
+# die vollstaendige Nummer.
+GG_WEB_CALLS_MASK="0"
+
+# Anzahl der Anrufe auf der Statusseite.
+GG_WEB_CALLS_LIMIT="10"
 
 # ---------------------------------------------------------------------
 # Web-Statusseite

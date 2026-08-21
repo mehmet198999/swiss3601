@@ -1,0 +1,23 @@
+# =====================================================================
+#  gsm-gateway-watchdog.service
+#
+#  Prueft die Kette Asterisk -> chan_mobile -> iPhone und stellt sie
+#  gestuft wieder her. Laeuft als kurzer Einzellauf per Timer, nicht
+#  als Dauerprozess - das spart Speicher auf dem Pi 3 und kann selbst
+#  nicht "haengenbleiben".
+#
+#  Waehrend eines laufenden Gespraechs unternimmt der Watchdog nichts.
+#
+#  Installiert nach: /etc/systemd/system/gsm-gateway-watchdog.service
+# =====================================================================
+[Unit]
+Description=GSM Gateway Watchdog (Verbindung ueberwachen)
+After=asterisk.service bluetooth.service
+# Erst nach abgeschlossener Erstinstallation.
+ConditionPathExists=/var/lib/gsm-gateway/setup-complete
+
+[Service]
+Type=oneshot
+ExecStart=/opt/gsm-gateway/scripts/gateway-watchdog.sh
+TimeoutStartSec=300
+Nice=10

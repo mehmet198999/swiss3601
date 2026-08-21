@@ -42,6 +42,12 @@ if [ -z "$HCI" ]; then
 	fi
 fi
 
+# Der Name kommt unter anderem von udev (%k). Erst pruefen, dann in
+# Pfaden und Aufrufen verwenden.
+if ! gg_is_hci_name "$HCI"; then
+	gg_error "'${HCI}' ist kein gueltiger Adaptername (erwartet: hci0, hci1, ...)."
+	exit 1
+fi
 if [ ! -e "/sys/class/bluetooth/${HCI}" ]; then
 	gg_error "Bluetooth-Adapter ${HCI} existiert nicht."
 	exit 1

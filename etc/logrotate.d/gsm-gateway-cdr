@@ -1,0 +1,18 @@
+# Logrotation fuer die Anrufliste (Call Detail Records).
+#
+# Master.csv waechst mit jedem Gespraech. Ohne Rotation liefe die
+# SD-Karte langfristig voll.
+#
+# Asterisk oeffnet die Datei bei jedem Datensatz neu, deshalb genuegt
+# eine gewoehnliche Rotation ohne Neustart.
+
+/var/log/asterisk/cdr-csv/Master.csv {
+	monthly
+	maxsize 5M
+	rotate 12
+	missingok
+	notifempty
+	compress
+	delaycompress
+	create 0640 asterisk asterisk
+}

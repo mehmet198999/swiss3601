@@ -19,6 +19,7 @@ import io
 import ipaddress
 import json
 import os
+import re
 import socket
 import socketserver
 import sys
@@ -90,6 +91,42 @@ def badge_class(state):
     }.get(state, "skip")
 
 
+# Der Abschnitt mit der Anrufliste laesst sich komplett ausblenden,
+# ohne die Vorlage zu aendern.
+CALLS_SECTION = re.compile(
+    r"<!--CALLS_START-->.*?<!--CALLS_END-->", re.S)
+
+
+def render_call_rows(calls):
+    """Baut die Zeilen der Anrufliste."""
+    if not calls:
+        return ('<tr><td class="detail" colspan="4">'
+                "Noch keine Anrufe aufgezeichnet.</td></tr>")
+
+    rows = []
+    for call in calls:
+        direction = str(call.get("direction", ""))
+        css = {"eingehend": "dir-in", "ausgehend": "dir-out"}.get(direction, "")
+        missed = bool(call.get("missed"))
+        state = "fail" if missed else ("ok" if call.get("answered") else "skip")
+        rows.append(
+            '<tr>'
+            '<td class="when">{when}</td>'
+            '<td class="num {css}">{number}</td>'
+            '<td class="dur">{duration}</td>'
+            '<td><span class="badge {state}">{disposition}</span></td>'
+            "</tr>".format(
+                when=html.escape(str(call.get("when", ""))[:16]),
+                css=css,
+                number=html.escape(str(call.get("number", "?"))),
+                duration=html.escape(str(call.get("duration", "-"))),
+                state=state,
+                disposition=html.escape(str(call.get("disposition", ""))),
+            )
+        )
+    return "\n".join(rows)
+
+
 def render_rows(items):
     rows = []
     for item in items:
@@ -116,6 +153,10 @@ def render_page():
             "<html><body><h1>GSM Gateway</h1>@CHECK_ROWS@@MANUAL_ROWS@</body></html>"
         )
 
+    config = read_config()
+    if config.get("GG_WEB_SHOW_CALLS", "yes") != "yes":
+        template = CALLS_SECTION.sub("", template)
+
     data = load_status()
     if data is None:
         return template.replace("@CHECK_ROWS@", (
@@ -124,12 +165,16 @@ def render_page():
             '<td class="detail">Noch keine Statusdaten. '
             "gsm-gateway-status.service laeuft alle 60 Sekunden.</td></tr>"
         )).replace("@MANUAL_ROWS@", "").replace(
+            "@CALL_ROWS@", render_call_rows([])
+        ).replace(
             "@GENERATED@", "-"
         ).replace("@HOSTNAME@", html.escape(socket.gethostname()))
 
+    cdr = data.get("cdr") or {}
     return (
         template.replace("@CHECK_ROWS@", render_rows(data.get("checks", [])))
         .replace("@MANUAL_ROWS@", render_rows(data.get("manual", [])))
+        .replace("@CALL_ROWS@", render_call_rows(cdr.get("calls", [])))
         .replace("@GENERATED@", html.escape(str(data.get("generated", "-"))))
         .replace("@HOSTNAME@", html.escape(str(data.get("hostname", socket.gethostname()))))
     )

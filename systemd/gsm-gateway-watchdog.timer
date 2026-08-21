@@ -1,0 +1,19 @@
+# =====================================================================
+#  gsm-gateway-watchdog.timer
+#
+#  Minutentakt. Die Eskalationsstufen im Watchdog sind darauf
+#  abgestimmt (Fehlversuche = Minuten).
+#
+#  Installiert nach: /etc/systemd/system/gsm-gateway-watchdog.timer
+# =====================================================================
+[Unit]
+Description=GSM Gateway Watchdog regelmaessig ausfuehren
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=60s
+AccuracySec=10s
+Unit=gsm-gateway-watchdog.service
+
+[Install]
+WantedBy=timers.target

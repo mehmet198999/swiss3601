@@ -1,0 +1,35 @@
+;
+; cdr.conf - Anrufaufzeichnung (Call Detail Records)
+; Erzeugt von setup-monitoring.sh am @GENERATED_AT@
+;
+; Daraus entsteht die Anrufliste:
+;     sudo gateway-calls
+;
+; Die Aufzeichnung landet als CSV-Datei in
+;     /var/log/asterisk/cdr-csv/Master.csv
+;
+; Datenschutz: In dieser Datei stehen Rufnummern und Zeitpunkte aller
+; Gespraeche. Sie ist nur fuer den Benutzer asterisk und root lesbar.
+; Wer das nicht moechte, setzt in /etc/gsm-gateway/gateway.conf
+;     GG_CDR_ENABLE="no"
+; und fuehrt setup-monitoring.sh erneut aus.
+;
+
+[general]
+enable=@CDR_ENABLE@
+
+; Auch nicht angenommene Anrufe aufzeichnen - sonst taucht genau das
+; nicht auf, was man am haeufigsten sucht: der verpasste Anruf.
+unanswered=yes
+congestion=yes
+
+; Den Datensatz abschliessen, bevor die h-Extension laeuft. Sonst
+; verfaelscht die Nachbearbeitung die Gespraechsdauer.
+endbeforehexten=yes
+
+[csv]
+usegmtime=no
+loguniqueid=yes
+loguserfield=yes
+; Keine zusaetzlichen Dateien pro Konto - eine Master.csv genuegt.
+accountlogs=no

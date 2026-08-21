@@ -214,11 +214,22 @@ select_device_by_scan() {
 	while IFS= read -r line; do
 		mac="$(printf '%s' "$line" | awk '{print $2}')"
 		name="$(printf '%s' "$line" | cut -d' ' -f3-)"
+		# Geraetenamen kommen von fremden Geraeten in Funkreichweite und
+		# koennen alles enthalten - auch Zeilenumbrueche, die eine
+		# zusaetzliche "Device ..."-Zeile vortaeuschen. Nur echte
+		# MAC-Adressen kommen in die Auswahl.
+		if ! gg_is_mac "$mac"; then
+			continue
+		fi
 		i=$((i + 1))
 		macs+=("$mac")
 		names+=("$name")
 		printf '  %2d) %s   %s\n' "$i" "$mac" "$name"
 	done <<<"$devices"
+
+	if [ "$i" -eq 0 ]; then
+		gg_die "Es wurde kein Geraet mit einer gueltigen MAC-Adresse gefunden."
+	fi
 
 	printf '\n   0) Abbrechen\n\n'
 
@@ -273,8 +284,14 @@ INTRO2
 		if [ -n "$found" ]; then
 			PHONE_MAC="$(printf '%s' "$found" | awk '{print $2}')"
 			PHONE_NAME="$(printf '%s' "$found" | cut -d' ' -f3-)"
-			gg_ok "Gekoppeltes Geraet erkannt: ${PHONE_NAME} (${PHONE_MAC})"
-			return 0
+			if ! gg_is_mac "$PHONE_MAC"; then
+				gg_warn "Ignoriere Eintrag ohne gueltige MAC-Adresse."
+				PHONE_MAC=""
+				PHONE_NAME=""
+			else
+				gg_ok "Gekoppeltes Geraet erkannt: ${PHONE_NAME} (${PHONE_MAC})"
+				return 0
+			fi
 		fi
 		sleep 5
 		waited=$((waited + 5))
@@ -288,14 +305,19 @@ case "$MODE" in
 scan) select_device_by_scan ;;
 from-iphone) wait_for_iphone_initiated ;;
 direct)
-	case "$PHONE_MAC" in
-	[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]) ;;
-	*) gg_die "'${PHONE_MAC}' ist keine gueltige MAC-Adresse (Format AA:BB:CC:DD:EE:FF)." ;;
-	esac
+	if ! gg_is_mac "$PHONE_MAC"; then
+		gg_die "'${PHONE_MAC}' ist keine gueltige MAC-Adresse (Format AA:BB:CC:DD:EE:FF)."
+	fi
 	PHONE_NAME="(per --device vorgegeben)"
 	gg_info "Verwende vorgegebene MAC ${PHONE_MAC}."
 	;;
 esac
+
+# Ab hier steht die MAC fest - vor jedem weiteren Schritt noch einmal
+# pruefen, damit keine der drei Auswahlwege etwas Unerwartetes liefert.
+if ! gg_is_mac "$PHONE_MAC"; then
+	gg_die "Interner Fehler: '${PHONE_MAC}' ist keine gueltige MAC-Adresse."
+fi
 
 # ---------------------------------------------------------------------
 #  2. Pairing

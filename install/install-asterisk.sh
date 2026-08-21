@@ -221,7 +221,7 @@ download_and_verify() {
 }
 
 verify_gpg() {
-	local tarball="$1" sigfile="$2" keyring gnupghome
+	local tarball="$1" sigfile="$2" keyring gnupghome imported="no"
 	if ! command -v gpg >/dev/null 2>&1; then
 		gg_warn "gpg ist nicht installiert - Signaturpruefung uebersprungen."
 		return 0
@@ -231,13 +231,42 @@ verify_gpg() {
 	chmod 700 "$gnupghome"
 	keyring="${gnupghome}/asterisk.gpg"
 
-	if ! GNUPGHOME="$gnupghome" gpg --batch --quiet \
-		--keyserver "$GG_ASTERISK_KEYSERVER" \
-		--recv-keys "$GG_ASTERISK_GPG_FPR" >/dev/null 2>&1; then
-		gg_warn "Signaturschluessel ${GG_ASTERISK_GPG_FPR} konnte nicht vom Keyserver"
-		gg_warn "${GG_ASTERISK_KEYSERVER} geladen werden (Firewall/Proxy?)."
-		gg_warn "Es wurde nur die SHA-256-Pruefsumme verifiziert."
+	# 1. Bevorzugt der mitgelieferte Signaturschluessel.
+	#    So haengt die Echtheitspruefung nicht davon ab, ob ein
+	#    Keyserver erreichbar ist - und der Schluessel kommt nicht von
+	#    demselben Server wie das Archiv.
+	local local_key="${GG_PREFIX}/keys/asterisk-release.asc"
+	if [ -r "$local_key" ]; then
+		if GNUPGHOME="$gnupghome" gpg --batch --quiet --import "$local_key" >/dev/null 2>&1; then
+			# Gegenprobe: passt der mitgelieferte Schluessel wirklich zum
+			# konfigurierten Fingerprint?
+			if GNUPGHOME="$gnupghome" gpg --batch --with-colons --fingerprint 2>/dev/null |
+				awk -F: '/^fpr:/ {print $10}' | grep -qx "$GG_ASTERISK_GPG_FPR"; then
+				imported="yes"
+				gg_info "Signaturschluessel aus ${local_key} verwendet."
+			else
+				rm -rf "$gnupghome"
+				gg_die "Der mitgelieferte Schluessel ${local_key} passt nicht zum erwarteten Fingerprint ${GG_ASTERISK_GPG_FPR}."
+			fi
+		fi
+	fi
+
+	# 2. Ersatzweise vom Keyserver holen.
+	if [ "$imported" = "no" ]; then
+		if GNUPGHOME="$gnupghome" gpg --batch --quiet \
+			--keyserver "$GG_ASTERISK_KEYSERVER" \
+			--recv-keys "$GG_ASTERISK_GPG_FPR" >/dev/null 2>&1; then
+			imported="yes"
+			gg_info "Signaturschluessel vom Keyserver ${GG_ASTERISK_KEYSERVER} geladen."
+		fi
+	fi
+
+	if [ "$imported" = "no" ]; then
 		rm -rf "$gnupghome"
+		gg_warn "Der Signaturschluessel ${GG_ASTERISK_GPG_FPR} konnte weder lokal"
+		gg_warn "noch ueber ${GG_ASTERISK_KEYSERVER} beschafft werden."
+		gg_warn "Es wurde daher nur die SHA-256-Pruefsumme verifiziert - und die"
+		gg_warn "stammt vom selben Server wie das Archiv."
 		return 0
 	fi
 

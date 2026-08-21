@@ -44,6 +44,12 @@
   tr:first-child td { border-top: none; }
   .label { font-weight: 600; white-space: nowrap; }
   .detail { color: var(--muted); font-size: .85rem; word-break: break-word; }
+  .when { color: var(--muted); font-size: .82rem; white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dur { text-align: right; font-variant-numeric: tabular-nums;
+         color: var(--muted); white-space: nowrap; }
+  .dir-in::before  { content: "\2193\00a0"; color: var(--ok); }
+  .dir-out::before { content: "\2191\00a0"; color: var(--pending); }
   .badge { display: inline-block; min-width: 4.5rem; text-align: center;
            padding: .1rem .5rem; border-radius: 999px;
            font-size: .78rem; font-weight: 700; letter-spacing: .02em; }
@@ -67,6 +73,15 @@
       @CHECK_ROWS@
     </table>
   </div>
+
+  <!--CALLS_START-->
+  <h2>Letzte Anrufe</h2>
+  <div class="card">
+    <table>
+      @CALL_ROWS@
+    </table>
+  </div>
+  <!--CALLS_END-->
 
   <h2>Manuelle Tests</h2>
   <div class="card">

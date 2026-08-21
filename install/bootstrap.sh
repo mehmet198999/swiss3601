@@ -107,7 +107,8 @@ link_command() {
 
 for script in gateway-check.sh bluetooth-check.sh gateway-test.sh \
 	pair-iphone.sh backup-gateway.sh uninstall-gateway.sh \
-	gateway-credentials.sh gateway-hci-prepare.sh; do
+	gateway-credentials.sh gateway-hci-prepare.sh \
+	gateway-watchdog.sh gateway-calls.sh; do
 	[ -f "${TARGET_DIR}/scripts/${script}" ] || die "Script fehlt: ${script}"
 	link_command "$script"
 done

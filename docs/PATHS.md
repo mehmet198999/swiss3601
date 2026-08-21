@@ -12,6 +12,7 @@ alles.
 |---|---|---|
 | `/opt/gsm-gateway/` | `root:root 0755` | Das gesamte Projekt. Wird von `install/bootstrap.sh` hierher kopiert. |
 | `/opt/gsm-gateway/lib/common.sh` | `0644` | Gemeinsame Shell-Funktionen (Protokollierung, Fehlerbehandlung, Erkennung). Wird eingebunden, nie direkt gestartet. |
+| `/opt/gsm-gateway/keys/asterisk-release.asc` | `0644` | Öffentlicher Signaturschlüssel des Asterisk-Projekts. Damit wird das heruntergeladene Archiv geprüft, ohne auf einen Keyserver angewiesen zu sein. |
 | `/usr/local/src/gsm-gateway/` | `root:root` | Asterisk-Quellcode und Build-Verzeichnis. Wird nur beim Quellcode-Build angelegt und kann nach erfolgreicher Installation gelöscht werden (spart ~2 GB). |
 
 ## Befehle
@@ -28,6 +29,8 @@ Alle Einträge in `/usr/local/bin/` sind Verweise nach
 | `gateway-test` / `gateway-test.sh` | Gesamtstatus, auch als JSON |
 | `pair-iphone` / `pair-iphone.sh` | iPhone koppeln |
 | `gateway-credentials` / `.sh` | SIP-Zugangsdaten anzeigen |
+| `gateway-watchdog` / `.sh` | Verbindungsüberwachung (Zustand, Zurücksetzen) |
+| `gateway-calls` / `.sh` | Anrufliste |
 | `gateway-hci-prepare` / `.sh` | Bluetooth-Adapter für `chan_mobile` vorbereiten |
 | `backup-gateway` / `.sh` | Sicherung erstellen |
 | `uninstall-gateway` / `.sh` | Gateway entfernen |
@@ -52,6 +55,8 @@ Alle Einträge in `/usr/local/bin/` sind Verweise nach
 | `/etc/asterisk/extensions.conf` | `0640` | Wählplan: eingehend, ausgehend, Sperrliste, Testnummern |
 | `/etc/asterisk/rtp.conf` | `0640` | Portbereich der Sprachdaten (10000–10100) |
 | `/etc/asterisk/logger.conf` | `0640` | Protokollkanäle, u. a. `security` für fail2ban |
+| `/etc/asterisk/cdr.conf` | `0640` | Anrufaufzeichnung. `unanswered=yes` sorgt dafür, dass auch verpasste Anrufe erscheinen. |
+| `/var/log/asterisk/cdr-csv/Master.csv` | `0640 asterisk:asterisk` | Die Anrufliste. Enthält Rufnummern und Zeitpunkte; das Verzeichnis ist `0750`. |
 | `/etc/asterisk/backup/` | `0700` | Sicherungen vor jeder Änderung, zeitgestempelt |
 | `/usr/lib/asterisk/modules/chan_mobile.so` | — | Das Kanalmodul |
 | `/usr/sbin/asterisk` | — | Das Programm (bei Quellcode-Build; `--prefix=/usr`) |
@@ -75,6 +80,7 @@ Alle Einträge in `/usr/local/bin/` sind Verweise nach
 | `gsm-gateway-firstboot.service` | Erstinstallation. Läuft dank zweier `ConditionPathExists` nur, solange das Setup weder fertig noch endgültig aufgegeben ist. `TimeoutStartSec=infinity`, weil der Build Stunden dauert. |
 | `gsm-gateway-hci@.service` | Setzt das HCI-Voice-Setting auf `0x0060` und schaltet den Adapter ein. Wird per udev gestartet. |
 | `gsm-gateway-status.service` + `.timer` | Erzeugt jede Minute `/run/gsm-gateway/status.json` |
+| `gsm-gateway-watchdog.service` + `.timer` | Prüft jede Minute die Kette Asterisk → chan_mobile → iPhone und stellt sie gestuft wieder her. Läuft dank `ConditionPathExists` erst nach abgeschlossener Erstinstallation. |
 | `gsm-gateway-web.service` | Statusseite, läuft als `gsm-web` ohne Systemrechte |
 | `asterisk.service` | **Nur bei Quellcode-Installation.** Setzt `CAP_NET_RAW` und `CAP_NET_ADMIN`, damit Asterisk als Benutzer `asterisk` an die Bluetooth-Sockets kommt. |
 
@@ -87,6 +93,8 @@ Alle Einträge in `/usr/local/bin/` sind Verweise nach
 | `/var/lib/gsm-gateway/install-attempts` | Zähler der Installationsversuche |
 | `/var/lib/gsm-gateway/install-status` | `RUNNING`, `OK` oder `FAILED` mit Zeitstempel |
 | `/var/lib/gsm-gateway/steps/*.done` | Je ein Merker pro erledigtem Schritt. Löschen = diesen Schritt wiederholen. |
+| `/var/lib/gsm-gateway/watchdog` | Zustand der Überwachung: Fehlerzähler, letzte Maßnahme, Zeitpunkt. Wird von `gateway-test` mit ausgewertet. |
+| `/var/log/gsm-gateway/watchdog.log` | Was der Watchdog unternommen hat |
 | `/var/lib/gsm-gateway/facts/*` | Ermittelte Werte: Adapter, MAC-Adressen, RFCOMM-Kanal, Installationsart. Damit spätere Scripts nichts raten müssen. |
 | `/run/gsm-gateway/status.json` | Aktueller Status für die Webseite (liegt im Arbeitsspeicher) |
 | `/var/log/gsm-gateway/install.log` | Kompletter Installationsverlauf |
@@ -105,6 +113,7 @@ Alle Einträge in `/usr/local/bin/` sind Verweise nach
 | `/etc/nftables.conf` | Wird nur um eine `include`-Zeile ergänzt, falls sie fehlt |
 | `/etc/fail2ban/jail.d/gsm-gateway.conf` | Jail gegen SIP-Passwortraten |
 | `/etc/logrotate.d/gsm-gateway` | Rotation der Gateway-Protokolle |
+| `/etc/logrotate.d/gsm-gateway-cdr` | Rotation der Anrufliste (monatlich, spätestens ab 5 MB) |
 | `/etc/logrotate.d/gsm-gateway-asterisk` | Rotation der Asterisk-Protokolle. Wird erst installiert, wenn der Benutzer `asterisk` existiert — sonst lehnt logrotate die Datei ab. Bringt das Asterisk-Paket eine eigene mit, bleibt diese unangetastet. |
 
 ## Auf der SD-Karte (nur Betriebsart `bootfs`)

@@ -158,17 +158,26 @@ backup_conf() {
 }
 backup_conf
 
-if ! gg_render_template "${GG_PREFIX}/asterisk/pjsip.conf.template" "${ASTERISK_ETC}/pjsip.conf" \
+# Das Passwort wird ueber die Umgebung uebergeben, NICHT als Argument:
+# /proc/<pid>/cmdline ist fuer jeden lokalen Benutzer lesbar, ein
+# Passwort auf der Kommandozeile taucht also in "ps" auf.
+# /proc/<pid>/environ ist dagegen nur fuer den Eigentuemer lesbar.
+# --mode 0640 sorgt dafuer, dass die Datei zu keinem Zeitpunkt
+# weltlesbar ist - auch nicht zwischen Erzeugen und chmod.
+export GG_TPL_SIP_PASSWORD="$SIP_PASSWORD"
+render_rc=0
+gg_render_template --mode 0640 --env SIP_PASSWORD \
+	"${GG_PREFIX}/asterisk/pjsip.conf.template" "${ASTERISK_ETC}/pjsip.conf" \
 	"LAN_IP=${LAN_IP}" \
 	"SIP_PORT=${GG_SIP_PORT}" \
 	"SIP_EXTENSION=${GG_SIP_EXTENSION}" \
-	"SIP_PASSWORD=${SIP_PASSWORD}" \
 	"LOCAL_NET_LINES=${LOCAL_NET_LINES}" \
 	"ACL_PERMIT_LINES=${ACL_PERMIT_LINES}" \
-	"GENERATED_AT=$(gg_timestamp)"; then
+	"GENERATED_AT=$(gg_timestamp)" || render_rc=$?
+unset GG_TPL_SIP_PASSWORD
+if [ "$render_rc" -ne 0 ]; then
 	gg_die "pjsip.conf konnte nicht erzeugt werden."
 fi
-chmod 0640 "${ASTERISK_ETC}/pjsip.conf"
 gg_ok "pjsip.conf geschrieben (Bind ${LAN_IP}:${GG_SIP_PORT}, ACL aktiv)."
 
 if ! gg_render_template "${GG_PREFIX}/asterisk/rtp.conf.template" "${ASTERISK_ETC}/rtp.conf" \

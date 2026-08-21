@@ -431,6 +431,9 @@ step_firewall() { gg_sub setup-firewall.sh; }
 # --- 17a. Web-Statusseite (Zusatzschritt) ----------------------------
 step_web() { gg_sub setup-web.sh; }
 
+# --- 17b. Watchdog und Anrufliste (Zusatzschritt) --------------------
+step_monitoring() { gg_sub setup-monitoring.sh; }
+
 # --- 18. Diagnose -----------------------------------------------------
 step_diagnostics() {
 	# Die Diagnose darf die Installation nicht abbrechen - sie sammelt
@@ -566,6 +569,7 @@ main() {
 	gg_run_step "16a-sip-config"         "SIP einrichten (nur LAN)"          step_sip_config
 	gg_run_step "17-firewall"            "Firewall vorbereiten"              step_firewall
 	gg_run_step "17a-web-status"         "Web-Statusseite einrichten"        step_web
+	gg_run_step "17b-monitoring"         "Watchdog und Anrufliste"           step_monitoring
 	gg_run_step "18-diagnostics"         "Diagnose durchfuehren"             step_diagnostics
 	gg_run_step "19-report"              "Statusbericht erstellen"           step_report
 	gg_run_step "20-finalize"            "Erstinstallation abschliessen"     step_finalize

@@ -156,10 +156,15 @@ Version — wird es bevorzugt. Sonst wird gebaut:
 * Asterisk **22 LTS**, Standarddownload `asterisk-22-current.tar.gz`
 * Prüfung der **SHA-256-Summe** (gegen unvollständige Downloads)
 * Prüfung der **GPG-Signatur** gegen den Fingerabdruck
-  `F2FC93DB7587BD1FB49E045A5D984BE337191CE7`.
-  Ist der Signaturschlüssel nicht erreichbar (Firewall, Proxy), wird das
-  deutlich protokolliert — dann wurde nur die Prüfsumme verifiziert.
+  `F2FC93DB7587BD1FB49E045A5D984BE337191CE7`. Der öffentliche Schlüssel
+  liegt dem Projekt bei (`keys/asterisk-release.asc`) und wird bevorzugt
+  verwendet — die Echtheitsprüfung hängt damit weder von einem Keyserver
+  noch vom Download-Server ab. Passt der mitgelieferte Schlüssel nicht
+  zum konfigurierten Fingerabdruck, bricht die Installation ab.
   Eine **ungültige** Signatur führt immer zum Abbruch.
+  Nur wenn weder der mitgelieferte Schlüssel noch ein Keyserver
+  verfügbar sind, wird auf die reine Prüfsumme zurückgefallen — und das
+  wird deutlich protokolliert.
 * Es werden nur die benötigten Module gebaut; Wartemelodien werden
   abgewählt.
 
@@ -205,6 +210,39 @@ Version — wird es bevorzugt. Sonst wird gebaut:
 | Schutz gegen Angreifer im eigenen LAN | Wer im selben Netz ist und das Passwort kennt, kann telefonieren. |
 | Absicherung des Betriebssystems | Automatische Updates, SSH-Härtung, Schlüsselanmeldung: nicht Teil dieses Projekts. |
 | Verschlüsselung der SD-Karte | Wer die Karte in der Hand hat, liest das SIP-Passwort und die Bluetooth-Schlüssel. |
+
+---
+
+## 6a. Watchdog und Anrufliste — was sie leisten und was nicht
+
+**Der Watchdog** prüft jede Minute, ob Asterisk antwortet, `chan_mobile`
+geladen ist und das iPhone verbunden ist, und stellt die Verbindung
+gestuft wieder her.
+
+Was er **nicht** kann:
+
+* Er kann kein iPhone wieder in Reichweite bringen und keines aus dem
+  Auto zurückholen. Ist die Ursache außerhalb des Pi, meldet er das nach
+  20 Minuten und hört auf einzugreifen — absichtlich, damit der Pi nicht
+  in einer Neustartschleife landet.
+* Er greift **während eines Gesprächs nicht ein**. Reißt eine Verbindung
+  mitten im Telefonat ab, wird sie erst nach dem Auflegen wieder
+  aufgebaut.
+* Er verschickt keine Benachrichtigungen. Der Zustand steht in
+  `gateway-test`, auf der Statusseite und in `watchdog.log` — wer aktiv
+  informiert werden möchte, braucht zusätzlich etwas Eigenes.
+* Erkennt er ein Problem, das er nicht lösen kann, bleibt es bestehen.
+  Der Watchdog ersetzt keine Fehlersuche.
+
+**Die Anrufliste** stammt aus Asterisks eigener Aufzeichnung. Sie zeigt
+nur, was über das Gateway lief:
+
+* Anrufe, die direkt am iPhone angenommen wurden, tauchen **nicht** auf.
+* Anrufe, die das Mobilfunknetz gar nicht erst durchgestellt hat (weil
+  das iPhone nicht verbunden war), tauchen ebenfalls nicht auf — dort
+  hilft nur die Anrufliste des iPhones selbst.
+* Die Rufnummer kommt aus der Anruferkennung des Netzes. Unterdrückte
+  Nummern bleiben unbekannt.
 
 ---
 

@@ -209,6 +209,12 @@ gg_load_config() {
 	GG_SIP_PASSWORD_LENGTH="${GG_SIP_PASSWORD_LENGTH:-24}"
 	GG_BLOCKED_PREFIXES="${GG_BLOCKED_PREFIXES:-0900 0901 0906 00881 00882 00883 00870 00871 00872 00873}"
 	GG_MAX_OUTGOING_CALLS="${GG_MAX_OUTGOING_CALLS:-1}"
+	GG_WATCHDOG_ENABLE="${GG_WATCHDOG_ENABLE:-yes}"
+	GG_CDR_ENABLE="${GG_CDR_ENABLE:-yes}"
+	GG_CDR_FILE="${GG_CDR_FILE:-/var/log/asterisk/cdr-csv/Master.csv}"
+	GG_WEB_SHOW_CALLS="${GG_WEB_SHOW_CALLS:-yes}"
+	GG_WEB_CALLS_MASK="${GG_WEB_CALLS_MASK:-0}"
+	GG_WEB_CALLS_LIMIT="${GG_WEB_CALLS_LIMIT:-10}"
 	GG_WEB_ENABLE="${GG_WEB_ENABLE:-yes}"
 	GG_WEB_PORT="${GG_WEB_PORT:-80}"
 	GG_TIMEZONE="${GG_TIMEZONE:-Europe/Zurich}"
@@ -429,6 +435,29 @@ gg_dns_works() {
 # Bluetooth-Hilfen
 # ---------------------------------------------------------------------
 
+# Ist das eine gueltige MAC-Adresse (AA:BB:CC:DD:EE:FF)?
+# Wichtig, weil Geraetenamen aus der Bluetooth-Umgebung stammen und
+# damit von fremden Geraeten beeinflusst werden koennen. Was in eine
+# Konfigurationsdatei geschrieben wird, muss geprueft sein.
+gg_is_mac() {
+	case "$(printf '%s' "${1:-}" | tr 'a-f' 'A-F')" in
+	[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F])
+		return 0
+		;;
+	*) return 1 ;;
+	esac
+}
+
+# Ist das ein gueltiger HCI-Geraetename (hci0, hci1, ...)?
+gg_is_hci_name() {
+	case "${1:-}" in
+	hci) return 1 ;;
+	hci*[!0-9]*) return 1 ;;
+	hci*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
 # Alle vorhandenen HCI-Adapter (hci0 hci1 ...).
 gg_bt_adapters() {
 	local dev
@@ -601,15 +630,31 @@ gg_backup_file() {
 # Ersetzt @PLATZHALTER@ in einer Vorlage.
 # Die eigentliche Arbeit macht lib/render-template.py - damit sind auch
 # mehrzeilige Werte und Sonderzeichen (Passwoerter!) unproblematisch.
-# gg_render_template <vorlage> <ziel> NAME=WERT ...
+#
+# gg_render_template [--mode 0640] [--env SCHLUESSEL] <vorlage> <ziel> NAME=WERT ...
+#
+# --env SCHLUESSEL nimmt den Wert aus GG_TPL_<SCHLUESSEL> statt von der
+# Kommandozeile. Fuer Geheimnisse zwingend: /proc/<pid>/cmdline kann
+# jeder lokale Benutzer lesen.
 gg_render_template() {
+	local opts=()
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+		--mode | --env)
+			opts+=("$1" "$2")
+			shift 2
+			;;
+		*) break ;;
+		esac
+	done
+
 	local tpl="$1" out="$2"
 	shift 2
 	if [ ! -r "$tpl" ]; then
 		gg_error "Vorlage fehlt: $tpl"
 		return 1
 	fi
-	if ! "${GG_PREFIX}/lib/render-template.py" "$tpl" "$out" "$@"; then
+	if ! "${GG_PREFIX}/lib/render-template.py" ${opts[@]+"${opts[@]}"} "$tpl" "$out" "$@"; then
 		gg_error "Vorlage ${tpl} konnte nicht nach ${out} gerendert werden."
 		return 1
 	fi

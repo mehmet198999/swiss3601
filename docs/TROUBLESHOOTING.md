@@ -24,6 +24,8 @@ weiterlesen.
 * [Anrufe kommen nicht an](#anrufe-kommen-nicht-an)
 * [Kein Ton oder nur in eine Richtung](#kein-ton-oder-nur-in-eine-richtung)
 * [Gespräche brechen ab](#gespräche-brechen-ab)
+* [Der Watchdog greift ständig ein](#der-watchdog-greift-ständig-ein)
+* [Die Anrufliste bleibt leer](#die-anrufliste-bleibt-leer)
 * [Nach einem Neustart geht nichts mehr](#nach-einem-neustart-geht-nichts-mehr)
 * [Ganz von vorn anfangen](#ganz-von-vorn-anfangen)
 
@@ -450,6 +452,75 @@ Verlauf ansehen:
 sudo grep -i 'mobile' /var/log/asterisk/messages | tail -40
 sudo dmesg | grep -i bluetooth | tail -20
 ```
+
+---
+
+## Der Watchdog greift ständig ein
+
+```bash
+sudo gateway-watchdog --status
+sudo tail -30 /var/log/gsm-gateway/watchdog.log
+```
+
+Jeder Eingriff steht dort mit Zeitstempel. Häufige Muster:
+
+| Im Protokoll | Bedeutung |
+|---|---|
+| Immer wieder `bluez-connect`, danach kurz verbunden | Das iPhone trennt aktiv. Meist ist es mit etwas anderem verbunden — Auto, Kopfhörer. Ein iPhone hält nur **eine** HFP-Verbindung gleichzeitig. |
+| Immer wieder `asterisk-restart` | `chan_mobile` lädt zwar, findet den Adapter aber nicht. Voice Setting prüfen: `sudo gateway-hci-prepare --show hci1` |
+| `adapter-reset`, danach wieder Fehler | Der USB-Adapter oder seine Firmware macht Probleme. Anderen USB-Anschluss probieren, `dmesg` ansehen. |
+| `aufgegeben` | Nach 20 Minuten ohne Erfolg hört der Watchdog auf einzugreifen — bewusst, damit der Pi nicht endlos neu startet. Nach Behebung: `sudo gateway-watchdog --reset` |
+
+Der Watchdog fasst während eines Gesprächs nichts an. Wenn dauernd
+telefoniert wird, kann es also länger dauern, bis er eingreift — das ist
+so gewollt.
+
+Vorübergehend abschalten:
+
+```bash
+sudo systemctl stop gsm-gateway-watchdog.timer
+```
+
+Dauerhaft: in `/etc/gsm-gateway/gateway.conf` `GG_WATCHDOG_ENABLE="no"`,
+danach `sudo /opt/gsm-gateway/install/setup-monitoring.sh`.
+
+---
+
+## Die Anrufliste bleibt leer
+
+```bash
+sudo gateway-calls
+ls -l /var/log/asterisk/cdr-csv/
+```
+
+1. **Aufzeichnung eingeschaltet?**
+   ```bash
+   grep GG_CDR_ENABLE /etc/gsm-gateway/gateway.conf
+   grep enable /etc/asterisk/cdr.conf
+   ```
+   Beides muss `yes` sein. Sonst:
+   ```bash
+   sudo /opt/gsm-gateway/install/setup-monitoring.sh
+   ```
+
+2. **Ist das Modul geladen?**
+   ```bash
+   sudo asterisk -rx "module show like cdr_csv"
+   ```
+   Fehlt `cdr_csv.so`, wurde es beim Bauen abgewählt:
+   ```bash
+   sudo asterisk -rx "module load cdr_csv.so"
+   ```
+
+3. **Schreibrechte?** Das Verzeichnis muss dem Benutzer `asterisk`
+   gehören:
+   ```bash
+   sudo chown -R asterisk:asterisk /var/log/asterisk/cdr-csv
+   sudo systemctl restart asterisk
+   ```
+
+4. **Verpasste Anrufe fehlen, angenommene sind da:**
+   In `/etc/asterisk/cdr.conf` muss `unanswered=yes` stehen.
 
 ---
 

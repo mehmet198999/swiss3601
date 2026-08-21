@@ -112,7 +112,8 @@ fi
 # ---------------------------------------------------------------------
 gg_headline "Dienste stoppen"
 for unit in gsm-gateway-firstboot.service gsm-gateway-web.service \
-	gsm-gateway-status.timer gsm-gateway-status.service asterisk.service; do
+	gsm-gateway-status.timer gsm-gateway-status.service \
+	gsm-gateway-watchdog.timer gsm-gateway-watchdog.service asterisk.service; do
 	if systemctl cat "$unit" >/dev/null 2>&1; then
 		if systemctl disable --now "$unit" >/dev/null 2>&1; then
 			gg_info "  ${unit} gestoppt und deaktiviert"
@@ -134,6 +135,8 @@ for f in /etc/systemd/system/gsm-gateway-firstboot.service \
 	/etc/systemd/system/gsm-gateway-web.service \
 	/etc/systemd/system/gsm-gateway-status.service \
 	/etc/systemd/system/gsm-gateway-status.timer \
+	/etc/systemd/system/gsm-gateway-watchdog.service \
+	/etc/systemd/system/gsm-gateway-watchdog.timer \
 	/etc/systemd/system/gsm-gateway-hci@.service; do
 	if [ -f "$f" ]; then
 		rm -f "$f"
@@ -222,6 +225,7 @@ for f in /etc/nftables.d/gsm-gateway.nft \
 	/etc/fail2ban/jail.d/gsm-gateway.conf \
 	/etc/logrotate.d/gsm-gateway \
 	/etc/logrotate.d/gsm-gateway-asterisk \
+	/etc/logrotate.d/gsm-gateway-cdr \
 	/etc/modprobe.d/gsm-gateway-bluetooth.conf \
 	/etc/udev/rules.d/99-gsm-gateway-bluetooth.rules; do
 	if [ -f "$f" ]; then

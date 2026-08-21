@@ -99,6 +99,7 @@ gg_info "  usr-local-bin: ${FOUND_BINS} Eintraege"
 mkdir -p "${DEST}/firewall"
 for f in /etc/nftables.d/gsm-gateway.nft /etc/fail2ban/jail.d/gsm-gateway.conf \
 	/etc/logrotate.d/gsm-gateway /etc/logrotate.d/gsm-gateway-asterisk \
+	/etc/logrotate.d/gsm-gateway-cdr \
 	/etc/modprobe.d/gsm-gateway-bluetooth.conf \
 	/etc/udev/rules.d/99-gsm-gateway-bluetooth.rules; do
 	if [ -f "$f" ]; then
@@ -118,6 +119,10 @@ done
 	printf 'iPhone:       %s / %s\n' "$(gg_fact_get phone_name -)" "$(gg_fact_get phone_mac -)"
 	printf 'RFCOMM-Port:  %s\n' "$(gg_fact_get rfcomm_port -)"
 	printf 'SIP-Bind-IP:  %s\n' "$(gg_fact_get sip_bind_ip -)"
+	printf '\n'
+	printf 'Hinweis: Die Anrufliste (%s) ist eine\n' "${GG_CDR_FILE}"
+	printf 'Protokolldatei und wird NICHT mitgesichert. Bei Bedarf separat\n'
+	printf 'kopieren - sie enthaelt Rufnummern.\n'
 } >"${DEST}/INFO.txt"
 
 chmod -R go-rwx "$DEST"

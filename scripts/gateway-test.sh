@@ -299,6 +299,53 @@ else
 	add firewall "Firewall" FAIL "Tabelle inet gsm_gateway fehlt - setup-firewall.sh ausfuehren"
 fi
 
+# --- Watchdog --------------------------------------------------------
+if [ "$GG_WATCHDOG_ENABLE" != "yes" ]; then
+	add watchdog "Watchdog" SKIP "In der Konfiguration abgeschaltet (GG_WATCHDOG_ENABLE)"
+elif ! systemctl cat gsm-gateway-watchdog.timer >/dev/null 2>&1; then
+	add watchdog "Watchdog" WARN "Nicht eingerichtet - 'sudo /opt/gsm-gateway/install/setup-monitoring.sh'"
+elif ! systemctl is-active --quiet gsm-gateway-watchdog.timer 2>/dev/null; then
+	add watchdog "Watchdog" WARN "Der Timer laeuft nicht - 'sudo systemctl start gsm-gateway-watchdog.timer'"
+else
+	WD_FAILS=0
+	WD_STATE="unbekannt"
+	WD_LAST_ACTION="keine"
+	if [ -r "${GG_STATE_DIR}/watchdog" ]; then
+		# shellcheck source=/dev/null
+		. "${GG_STATE_DIR}/watchdog"
+	fi
+	case "$WD_FAILS" in
+	'' | *[!0-9]*) WD_FAILS=0 ;;
+	esac
+	if [ "$WD_FAILS" -eq 0 ]; then
+		add watchdog "Watchdog" OK "aktiv, keine Auffaelligkeiten (${WD_STATE})"
+	else
+		add watchdog "Watchdog" WARN "${WD_STATE}; letzte Massnahme: ${WD_LAST_ACTION}"
+	fi
+fi
+
+# --- Anrufliste ------------------------------------------------------
+CDR_JSON='{"available": false, "calls": []}'
+if [ "$GG_CDR_ENABLE" != "yes" ]; then
+	add calls "Anrufliste" SKIP "Aufzeichnung abgeschaltet (GG_CDR_ENABLE)"
+elif [ ! -r "$GG_CDR_FILE" ]; then
+	add calls "Anrufliste" PENDING "Noch keine Anrufe aufgezeichnet"
+else
+	CDR_OUT="$("${GG_PREFIX}/lib/cdr-report.py" --file "$GG_CDR_FILE" \
+		--limit "$GG_WEB_CALLS_LIMIT" --mask "$GG_WEB_CALLS_MASK" --json 2>/dev/null)"
+	if [ -n "$CDR_OUT" ]; then
+		CDR_JSON="$CDR_OUT"
+	fi
+	MISSED="$("${GG_PREFIX}/lib/cdr-report.py" --file "$GG_CDR_FILE" --limit 100 --missed --json 2>/dev/null |
+		python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("calls", [])))' 2>/dev/null)"
+	TOTAL="$(wc -l <"$GG_CDR_FILE" 2>/dev/null | tr -d ' ')"
+	if [ "${MISSED:-0}" -gt 0 ] 2>/dev/null; then
+		add calls "Anrufliste" OK "${TOTAL:-0} Gespraeche, davon ${MISSED} verpasst - 'sudo gateway-calls --missed'"
+	else
+		add calls "Anrufliste" OK "${TOTAL:-0} Gespraeche aufgezeichnet - 'sudo gateway-calls'"
+	fi
+fi
+
 # --- Manuelle Tests --------------------------------------------------
 add_manual gsm_in "GSM Incoming" PENDING "Test A: eine andere Nummer ruft die Schweizer SIM an"
 add_manual gsm_out "GSM Outgoing" PENDING "Test B: von SIP ${GG_SIP_EXTENSION} eine Nummer anrufen"
@@ -342,6 +389,7 @@ emit_json() {
 			"$(json_escape "${CHECK_DETAILS[$i]}")"
 	done
 	printf '\n  ],\n'
+	printf '  "cdr": %s,\n' "$CDR_JSON"
 	printf '  "manual": [\n'
 	first=1
 	for i in "${!MANUAL_IDS[@]}"; do
